@@ -64,23 +64,38 @@ namespace Master.API.Extensions
             using var scope = app.Services.CreateScope();
             var serviceProvider = scope.ServiceProvider;
 
-            try
+            int retryCount = 0;
+            const int maxRetries = 10;
+
+            while (retryCount < maxRetries)
             {
-                var context = serviceProvider.GetRequiredService<MasterDbContext>();
+                try
+                {
+                    var context = serviceProvider.GetRequiredService<MasterDbContext>();
+                    
+                    // Verilənlər bazasının hazır olmasını gözləyirik (Docker-də bazanın açılması vaxt aparır)
+                    await context.Database.MigrateAsync();
 
-                await context.Database.MigrateAsync();
+                    await RoleSeeder.SeedRolesAsync(serviceProvider);
+                    await RoleSeeder.SeedSkillsAndUsersAsync(serviceProvider);
+                    await RoleSeeder.SeedRatingsAsync(serviceProvider);
+                    
+                    break; // Uğurlu olarsa dövrədən çıxırıq
+                }
+                catch (Exception ex)
+                {
+                    retryCount++;
+                    var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+                    
+                    if (retryCount >= maxRetries)
+                    {
+                        logger.LogError(ex, "An error occurred while seeding the database after several retries.");
+                        throw;
+                    }
 
-                await RoleSeeder.SeedRolesAsync(serviceProvider);
-
-                await RoleSeeder.SeedSkillsAndUsersAsync(serviceProvider);
-
-                await RoleSeeder.SeedRatingsAsync(serviceProvider);
-            }
-            catch (Exception ex)
-            {
-                var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred while seeding the database.");
-                throw;
+                    logger.LogWarning("Database server not ready yet. Retrying in 5 seconds... (Attempt {RetryCount} of {MaxRetries})", retryCount, maxRetries);
+                    await Task.Delay(5000); // 5 saniyə gözləyirik
+                }
             }
         }
     }
