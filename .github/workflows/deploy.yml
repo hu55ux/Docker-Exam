@@ -1,57 +1,57 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline # Pipeline-ın adı
 
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+on: # Pipeline-ın hansı hadisələrdə işə düşəcəyi
+  push: # Kod push olunduqda
+    branches: [ "main" ] # Yalnız "main" branch-ına push edildikdə
+  pull_request: # Pull request açıldıqda
+    branches: [ "main" ] # Yalnız "main" branch-ına PR açıldıqda
 
-jobs:
-  # Stage 1: Testing the application
+jobs: # İşlərin (jobs) siyahısı
+  # Mərhələ 1: Tətbiqin test edilməsi
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    runs-on: ubuntu-latest # Ən son Ubuntu virtual maşınında işləsin
+    steps: # Bu iş daxilində yerinə yetiriləcək addımlar
+      - uses: actions/checkout@v4 # Kodu GitHub runner-a kopyalayır
 
-      # Backend Tests
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      # Backend Testləri
+      - name: Setup .NET # .NET mühitini qurur
+        uses: actions/setup-dotnet@v4 # Rəsmi .NET action-dan istifadə edir
         with:
-          dotnet-version: 8.x
-      - name: Restore dependencies
-        run: dotnet restore Master/Master.sln
-      - name: Run Backend Tests
-        run: dotnet test Master/Master.sln --no-restore --verbosity normal
+          dotnet-version: 8.x # .NET-in 8-ci versiyasını yükləyir
+      - name: Restore dependencies # Paketləri və asılılıqları bərpa edir
+        run: dotnet restore Master/Master.sln # Solution faylı üzərindən restora edir
+      - name: Run Backend Tests # Backend testlərini işə salır
+        run: dotnet test Master/Master.sln --no-restore --verbosity normal # Testləri icra edir və detalı məlumat verir
 
-  # Stage 2: Build and Push Docker images
+  # Mərhələ 2: Docker imiclərinin yığılması və Docker Hub-a göndərilməsi
   build-and-push:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: test # Bu iş "test" işi uğurla bitdikdən sonra başlasın
+    runs-on: ubuntu-latest # Yenə Ubuntu virtual maşınında işləsin
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Yalnız main-ə push edildikdə işləsin
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # Kodu yenidən kopyalayır
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx # Docker-in təkmilləşdirilmiş build funksiyasını işə salır
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Log in to Docker Hub # Docker Hub-a giriş edir
+        uses: docker/login-action@v3 # Rəsmi Docker login action
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }} # GitHub Secret-dən istifadəçi adını oxuyur
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }} # GitHub Secret-dən şifrəni/tokeni oxuyur
 
-      # Build and Push Backend
+      # Backend Imicinin Build olunması və Push edilməsi
       - name: Build and push Backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v6 # Rəsmi build və push action
         with:
-          context: ./Master
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-backend:latest
+          context: ./Master # Backend kodunun olduğu qovluq
+          push: true # Docker Hub-a göndərilsin (push)
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-backend:latest # Imic üçün tag (etiket)
 
-      # Build and Push Frontend
+      # Frontend Imicinin Build olunması və Push edilməsi
       - name: Build and push Frontend
         uses: docker/build-push-action@v6
         with:
-          context: ./Masterrio
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-frontend:latest
+          context: ./Masterrio # Frontend kodunun olduğu qovluq
+          push: true # Docker Hub-a göndərilsin (push)
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-frontend:latest # Imic üçün tag (etiket)
