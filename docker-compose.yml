@@ -1,3 +1,4 @@
+# Docker orchestration configuration - CI/CD Trigger
 services:
   # Verilənlər bazası servisi (MSSQL)
   db:
