@@ -17,6 +17,8 @@ RUN npm run build
 FROM nginx:alpine AS final
 # Build mərhələsində yaranan static faylları (dist qovluğunu) Nginx-in default qovluğuna kopyalayırıq
 COPY --from=build /app/dist /usr/share/nginx/html
+# Xüsusi Nginx konfiqurasiyasını kopyalayırıq (Proxy üçün)
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Standart web portu olan 80-i kənar istifadə üçün açırıq
 EXPOSE 80
