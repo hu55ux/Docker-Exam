@@ -35,7 +35,7 @@ public class RegisterUserHandlerTests
         {
             Email = "huseyn@example.com",
             Password = "Password123!",
-            Role = "Customer"
+            Role = "Client"
         };
         var command = new RegisterUserCommand(registerRequest);
         var user = new AppUser { Email = registerRequest.Email };
@@ -61,7 +61,7 @@ public class RegisterUserHandlerTests
         result.Should().NotBeNull();
         result.Email.Should().Be(registerRequest.Email);
         _tokenServiceMock.Verify(x => x.GenerateTokensAsync(user), Times.Once);
-        _authRepoMock.Verify(x => x.AddToRoleAsync(user, "Customer"), Times.Once);
+        _authRepoMock.Verify(x => x.AddToRoleAsync(user, "Client"), Times.Once);
     }
 
     [Fact]
