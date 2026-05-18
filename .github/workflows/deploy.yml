@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   # Stage 1: Testing the application
   test:
@@ -45,7 +42,7 @@ jobs:
 
       # Build and Push Backend
       - name: Build and push Backend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./Master
           push: true
@@ -53,7 +50,7 @@ jobs:
 
       # Build and Push Frontend
       - name: Build and push Frontend
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: ./Masterrio
           push: true
