@@ -35,7 +35,7 @@ services:
       context: ./Masterrio # Build olunacaq qovluq
       dockerfile: Dockerfile # İstifadə olunacaq Dockerfile
     ports:
-      - "5173:80" # Yerli 5173 portunu konteynerin 80 portuna (Nginx) bağlayır
+      - "80:80" # Yerli 80 portunu konteynerin 80 portuna (Nginx) bağlayır
     depends_on:
       - backend # Frontend-in backend servisindən asılılığını bildirir
     restart: always # Avtomatik yenidən başlama siyasəti
