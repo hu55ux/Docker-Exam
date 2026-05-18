@@ -1,0 +1,142 @@
+using Master.Application.DTOs;
+using Master.Application.Interfaces;
+using Master.Application.Common;
+using Master.Domain.Models;
+using Master.Infrastructure.Data;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+
+namespace Master.Infrastructure.Repositories;
+
+/// <summary>
+/// Repository implementation for authentication and user management operations.
+/// </summary>
+public class AuthRepository : IAuthRepository
+{
+    private readonly MasterDbContext _context;
+    private readonly UserManager<AppUser> _userManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="AuthRepository"/> class.
+    /// </summary>
+    public AuthRepository(MasterDbContext context, UserManager<AppUser> userManager, RoleManager<IdentityRole<Guid>> roleManager)
+    {
+        _context = context;
+        _userManager = userManager;
+        _roleManager = roleManager;
+    }
+
+    /// <inheritdoc />
+    public async Task<AppUser?> GetByEmailAsync(string email)
+        => await _userManager.FindByEmailAsync(email);
+
+    /// <inheritdoc />
+    public async Task<AppUser?> GetByIdAsync(Guid id, CancellationToken ct)
+        => await _context.Users.FindAsync(new object[] { id }, ct);
+
+    /// <inheritdoc />
+    public async Task<AppUser?> GetByIdAsync(string id)
+         => await _userManager.FindByIdAsync(id);
+
+    /// <inheritdoc />
+    public async Task<IdentityResult> ChangePasswordAsync(AppUser user, string currentPassword, string newPassword)
+        => await _userManager.ChangePasswordAsync(user, currentPassword, newPassword);
+
+    public async Task<AppUser?> GetUserWithDetailsAsync(Guid userId, CancellationToken ct)
+    {
+        return await _context.Users
+         .Include(u => u.UserSkills).ThenInclude(us => us.Skill)
+         .Include(u => u.JobPosts)
+         .FirstOrDefaultAsync(u => u.Id == userId, ct);
+    }
+
+
+    public async Task<IdentityResult> FullDeleteUserAsync(AppUser user, CancellationToken ct)
+    {
+        if (user.UserSkills.Any()) _context.UserSkills.RemoveRange(user.UserSkills);
+        if (user.JobPosts.Any()) _context.JobPosts.RemoveRange(user.JobPosts);
+
+        var tokens = _context.RefreshTokens.Where(t => t.UserId == user.Id.ToString());
+        _context.RefreshTokens.RemoveRange(tokens);
+
+        var result = await _userManager.DeleteAsync(user);
+
+        if (result.Succeeded)
+        {
+            await _context.SaveChangesAsync(ct);
+        }
+
+        return result;
+    }
+
+    public async Task<IdentityResult> UpdateAsync(AppUser user)
+    {
+        return await _userManager.UpdateAsync(user);
+    }
+
+    public async Task<bool> CheckPasswordAsync(AppUser user, string password)
+    => await _userManager.CheckPasswordAsync(user, password);
+
+    public async Task<RefreshToken?> GetRefreshTokenByJtiAsync(string jti)
+    {
+        return await _context.RefreshTokens.FirstOrDefaultAsync(rt => rt.JwtId == jti);
+    }
+
+    public void UpdateRefreshToken(RefreshToken token)
+    {
+        _context.RefreshTokens.Update(token);
+    }
+
+    public async Task SaveChangesAsync(CancellationToken ct)
+    {
+        await _context.SaveChangesAsync(ct);
+    }
+
+    public async Task<IdentityResult> CreateUserAsync(AppUser user, string password)
+        => await _userManager.CreateAsync(user, password);
+
+    public async Task<bool> RoleExistsAsync(string roleName)
+        => await _roleManager.RoleExistsAsync(roleName);
+
+    public async Task CreateRoleAsync(string roleName)
+        => await _roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+
+    public async Task AddToRoleAsync(AppUser user, string roleName)
+        => await _userManager.AddToRoleAsync(user, roleName);
+
+    public async Task<PagedResult<AppUser>> GetUsersPagedAsync(string roleName, int pageNumber, int pageSize, string? search, string? orderBy)
+    {
+        var role = await _roleManager.FindByNameAsync(roleName);
+        if (role == null) return PagedResult<AppUser>.Create(new List<AppUser>(), pageNumber, pageSize, 0);
+
+        var query = _context.Users
+            .Where(u => _context.UserRoles.Any(ur => ur.UserId == u.Id && ur.RoleId == role.Id))
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.ToLower();
+            query = query.Where(u => 
+                (u.FirstName != null && u.FirstName.ToLower().Contains(search)) || 
+                (u.LastName != null && u.LastName.ToLower().Contains(search)));
+        }
+
+        if (orderBy == "rank")
+        {
+            query = query.OrderByDescending(u => u.AverageRating);
+        }
+        else if (orderBy == "name")
+        {
+            query = query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName);
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return PagedResult<AppUser>.Create(items, pageNumber, pageSize, totalCount);
+    }
+}

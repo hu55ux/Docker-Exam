@@ -1,0 +1,44 @@
+services:
+  # Verilənlər bazası servisi (MSSQL)
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest # MSSQL-in ən son versiyası
+    environment:
+      - ACCEPT_EULA=Y # İstifadəçi lisenziyasını qəbul etmək
+      - MSSQL_SA_PASSWORD=Password123! # SQL Server üçün SA şifrəsi
+      - MSSQL_PID=Developer # Developer versiyasını istifadə etmək
+    ports:
+      - "1433:1433" # Yerli 1433 portunu konteynerin 1433 portuna bağlayır
+    volumes:
+      - sql-data:/var/opt/mssql # Məlumatların itməməsi üçün volume (disk sahəsi)
+    restart: always # Hər hansı bir xəta olduqda və ya sistem yenidən başladıqda avtomatik qalxsın
+
+  # Arxa fon (Backend API) servisi
+  backend:
+    image: ${DOCKER_HUB_USERNAME:-yourusername}/master-backend:latest # Docker Hub-dakı image adı
+    build:
+      context: ./Master # Build olunacaq qovluq
+      dockerfile: Dockerfile # İstifadə olunacaq Dockerfile
+    ports:
+      - "5071:8080" # Yerli 5071 portunu konteynerin 8080 portuna (ASP.NET default) bağlayır
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production # Production mühitində işləmək
+      - ConnectionStrings__DefaultConnectionString=Server=db;Database=MasterDB;User ID=sa;Password=Password123!;Encrypt=False;TrustServerCertificate=True; # Verilənlər bazası bağlantısı
+    depends_on:
+      - db # Backend-in db servisindən asılılığını bildirir
+    restart: always # Avtomatik yenidən başlama siyasəti
+
+  # Ön tərəf (Frontend Web) servisi
+  frontend:
+    image: ${DOCKER_HUB_USERNAME:-yourusername}/master-frontend:latest # Docker Hub-dakı image adı
+    build:
+      context: ./Masterrio # Build olunacaq qovluq
+      dockerfile: Dockerfile # İstifadə olunacaq Dockerfile
+    ports:
+      - "5173:80" # Yerli 5173 portunu konteynerin 80 portuna (Nginx) bağlayır
+    depends_on:
+      - backend # Frontend-in backend servisindən asılılığını bildirir
+    restart: always # Avtomatik yenidən başlama siyasəti
+
+# Məlumatların saxlanılması üçün disk sahələrinin tərifi
+volumes:
+  sql-data: # MSSQL məlumatları üçün volume
