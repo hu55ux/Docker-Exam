@@ -14,93 +14,75 @@ jobs: # İşlərin (jobs) siyahısı
     steps: # Bu iş daxilində yerinə yetiriləcək addımlar
       - uses: actions/checkout@v4 # Kodu GitHub runner-a kopyalayır
 
-      # Backend Testləri
       - name: Setup .NET # .NET mühitini qurur
-        uses: actions/setup-dotnet@v4 # Rəsmi .NET action-dan istifadə edir
+        uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.x # .NET-in 8-ci versiyasını yükləyir
-      - name: Restore dependencies # Paketləri və asılılıqları bərpa edir
-        run: dotnet restore Master/Master.sln # Solution faylı üzərindən restora edir
-      - name: Run Backend Tests # Backend testlərini işə salır
-        run: dotnet test Master/Master.sln --no-restore --verbosity normal # Testləri icra edir və detalı məlumat verir
+          dotnet-version: 8.x
+      - name: Restore dependencies
+        run: dotnet restore Master/Master.sln
+      - name: Run Backend Tests
+        run: dotnet test Master/Master.sln --no-restore --verbosity normal
 
   # Mərhələ 2: Docker imiclərinin yığılması və Docker Hub-a göndərilməsi
   build-and-push:
-    needs: test # Bu iş "test" işi uğurla bitdikdən sonra başlasın
-    runs-on: ubuntu-latest # Yenə Ubuntu virtual maşınında işləsin
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Yalnız main-ə push edildikdə işləsin
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4 # Kodu yenidən kopyalayır
+      - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx # Docker-in təkmilləşdirilmiş build funksiyasını işə salır
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub # Docker Hub-a giriş edir
-        uses: docker/login-action@v3 # Rəsmi Docker login action
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }} # GitHub Secret-dən istifadəçi adını oxuyur
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }} # GitHub Secret-dən şifrəni/tokeni oxuyur
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      # Backend Imicinin Build olunması və Push edilməsi
       - name: Build and push Backend
-        uses: docker/build-push-action@v6 # Rəsmi build və push action
+        uses: docker/build-push-action@v6
         with:
-          context: ./Master # Backend kodunun olduğu qovluq
-          push: true # Docker Hub-a göndərilsin (push)
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-backend:latest # Imic üçün tag (etiket)
+          context: ./Master
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-backend:latest
 
-      # Frontend Imicinin Build olunması və Push edilməsi
       - name: Build and push Frontend
         uses: docker/build-push-action@v6
         with:
-          context: ./Masterrio # Frontend kodunun olduğu qovluq
-          push: true # Docker Hub-a göndərilsin (push)
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-frontend:latest # Imic üçün tag (etiket)
+          context: ./Masterrio
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-frontend:latest
 
   # Mərhələ 3: AWS EC2-yə avtomatik qoşulma və deployment
   aws_vm_deploy:
-    needs: build-and-push # Yalnız imiclər push olunduqdan sonra işləsin
+    needs: build-and-push
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to AWS EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3 # SSH vasitəsilə komanda icra edən action
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.AWS_EC2_HOST }} # Serverin IP ünvanı
-          username: ${{ secrets.AWS_EC2_USERNAME }} # Serverin istifadəçi adı (məs: ec2-user)
-          key: ${{ secrets.AWS_EC2_SSH_KEY }} # .pem faylının məzmunu (Private Key)
-          port: 22 # SSH portu
+          host: ${{ secrets.AWS_EC2_HOST }}
+          username: ${{ secrets.AWS_EC2_USERNAME }}
+          key: ${{ secrets.AWS_EC2_SSH_KEY }}
+          port: 22
           script: |
-            # Login shell mühitini yükləyirik (komandaların tam yolları burada təyin olunur)
-            source /etc/profile || true
-            source ~/.bash_profile || true
-            source ~/.bashrc || true
-            
-            # Debug: komandaların harada olduğunu yoxlayırıq
-            echo "=== DEBUG: Komanda yolları ==="
-            echo "PATH: $PATH"
-            which git 2>/dev/null || echo "git tapılmadı"
-            which docker 2>/dev/null || echo "docker tapılmadı"
-            which docker-compose 2>/dev/null || echo "docker-compose tapılmadı"
-            find / -name "git" -type f 2>/dev/null | head -5 || true
-            find / -name "docker" -type f 2>/dev/null | head -5 || true
-            echo "=== DEBUG SONU ==="
-            
             # Layihə qovluğuna keçirik (yoxdursa clone edirik)
             if [ ! -d "Docker-Exam" ]; then
-              git clone https://github.com/hu55ux/Docker-Exam.git
+              sudo git clone https://github.com/hu55ux/Docker-Exam.git
             fi
             cd Docker-Exam
-            
-            # Ən son kod dəyişikliklərini çəkirik
-            git pull origin main
-            
+
+            # Ən son kodu çəkirik
+            sudo git pull origin main
+
             # Yeni Docker imiclərini çəkirik
-            docker-compose pull
-            
+            sudo docker-compose pull
+
             # Konteynerləri yenidən başladırıq
-            docker-compose down
-            docker-compose up -d
-            
-            # Köhnə və lazımsız imicləri təmizləyirik
-            docker image prune -f
+            sudo docker-compose down
+            sudo docker-compose up -d
+
+            # Köhnə imicləri təmizləyirik
+            sudo docker image prune -f
