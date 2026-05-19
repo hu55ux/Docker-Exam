@@ -71,26 +71,21 @@ jobs: # İşlərin (jobs) siyahısı
           key: ${{ secrets.AWS_EC2_SSH_KEY }} # .pem faylının məzmunu (Private Key)
           port: 22 # SSH portu
           script: |
-            # Komandaların tam ünvanlarını təyin edirik
-            GIT_CMD=$(which git || echo "/usr/bin/git")
-            DOCKER_CMD=$(which docker || echo "/usr/bin/docker")
-            DOCKER_COMPOSE_CMD=$(which docker-compose || echo "/usr/local/bin/docker-compose")
-            
             # Layihə qovluğuna keçirik (yoxdursa clone edirik)
             if [ ! -d "Docker-Exam" ]; then
-              $GIT_CMD clone https://github.com/hu55ux/Docker-Exam.git
+              git clone https://github.com/hu55ux/Docker-Exam.git
             fi
             cd Docker-Exam
             
             # Ən son kod dəyişikliklərini çəkirik
-            $GIT_CMD pull origin main
+            git pull origin main
             
             # Yeni Docker imiclərini çəkirik
-            $DOCKER_COMPOSE_CMD pull
+            docker-compose pull
             
             # Konteynerləri yenidən başladırıq
-            $DOCKER_COMPOSE_CMD down
-            $DOCKER_COMPOSE_CMD up -d
+            docker-compose down
+            docker-compose up -d
             
             # Köhnə və lazımsız imicləri təmizləyirik
-            $DOCKER_CMD image prune -f
+            docker image prune -f
