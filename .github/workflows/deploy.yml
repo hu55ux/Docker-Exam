@@ -6,15 +6,16 @@ on: # Pipeline-ın hansı hadisələrdə işə düşəcəyi
     branches: [ "main" ] # Yalnız "main" branch-ına push edildikdə
   pull_request: # Pull request açıldıqda
     branches: [ "main" ] # Yalnız "main" branch-ına PR açıldıqda
+  workflow_dispatch: # Əl ilə işə salmaq üçün
 
 jobs: # İşlərin (jobs) siyahısı
   # Mərhələ 1: Tətbiqin test edilməsi
   test:
-    runs-on: ubuntu-latest # Ən son Ubuntu virtual maşınında işləsin
-    steps: # Bu iş daxilində yerinə yetiriləcək addımlar
-      - uses: actions/checkout@v4 # Kodu GitHub runner-a kopyalayır
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET # .NET mühitini qurur
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.x
@@ -61,16 +62,33 @@ jobs: # İşlərin (jobs) siyahısı
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to AWS EC2 via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.AWS_EC2_HOST }}
           username: ${{ secrets.AWS_EC2_USERNAME }}
           key: ${{ secrets.AWS_EC2_SSH_KEY }}
           port: 22
-          request_pty: true # İnteraktiv terminal açır ki, PATH düzgün yüklənsin
           script: |
+            # Git yoxdursa quraşdırırıq
+            if ! command -v git &>/dev/null; then
+              sudo yum install -y git || sudo apt-get install -y git
+            fi
+
+            # Docker yoxdursa quraşdırırıq
+            if ! command -v docker &>/dev/null; then
+              sudo yum install -y docker || sudo apt-get install -y docker.io
+              sudo systemctl start docker
+              sudo usermod -aG docker $USER
+            fi
+
+            # docker-compose yoxdursa quraşdırırıq
+            if ! command -v docker-compose &>/dev/null; then
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+
             # Layihə qovluğuna keçirik (yoxdursa clone edirik)
-            if [ ! -d "Docker-Exam" ]; then
+            if [ ! -d "Docker-Exam/.git" ]; then
               git clone https://github.com/hu55ux/Docker-Exam.git
             fi
             cd Docker-Exam
