@@ -71,6 +71,9 @@ jobs: # İşlərin (jobs) siyahısı
           key: ${{ secrets.AWS_EC2_SSH_KEY }} # .pem faylının məzmunu (Private Key)
           port: 22 # SSH portu
           script: |
+            # Komandaların tapılması üçün PATH-ı məcburi yeniləyirik
+            export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+            
             # Layihə qovluğuna keçirik (yoxdursa clone edirik)
             if [ ! -d "Docker-Exam" ]; then
               git clone https://github.com/hu55ux/Docker-Exam.git
