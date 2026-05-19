@@ -71,8 +71,20 @@ jobs: # İşlərin (jobs) siyahısı
           key: ${{ secrets.AWS_EC2_SSH_KEY }} # .pem faylının məzmunu (Private Key)
           port: 22 # SSH portu
           script: |
-            # Komandaların tapılması üçün PATH-ı məcburi yeniləyirik
-            export PATH=$PATH:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+            # Login shell mühitini yükləyirik (komandaların tam yolları burada təyin olunur)
+            source /etc/profile || true
+            source ~/.bash_profile || true
+            source ~/.bashrc || true
+            
+            # Debug: komandaların harada olduğunu yoxlayırıq
+            echo "=== DEBUG: Komanda yolları ==="
+            echo "PATH: $PATH"
+            which git 2>/dev/null || echo "git tapılmadı"
+            which docker 2>/dev/null || echo "docker tapılmadı"
+            which docker-compose 2>/dev/null || echo "docker-compose tapılmadı"
+            find / -name "git" -type f 2>/dev/null | head -5 || true
+            find / -name "docker" -type f 2>/dev/null | head -5 || true
+            echo "=== DEBUG SONU ==="
             
             # Layihə qovluğuna keçirik (yoxdursa clone edirik)
             if [ ! -d "Docker-Exam" ]; then
