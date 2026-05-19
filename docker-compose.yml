@@ -15,7 +15,7 @@ services:
 
   # Arxa fon (Backend API) servisi
   backend:
-    image: ${DOCKER_HUB_USERNAME:-yourusername}/master-backend:latest # Docker Hub-dakı image adı
+    image: hu55ux/master-backend:latest # Docker Hub-dakı image adı
     build:
       context: ./Master # Build olunacaq qovluq
       dockerfile: Dockerfile # İstifadə olunacaq Dockerfile
@@ -30,7 +30,7 @@ services:
 
   # Ön tərəf (Frontend Web) servisi
   frontend:
-    image: ${DOCKER_HUB_USERNAME:-yourusername}/master-frontend:latest # Docker Hub-dakı image adı
+    image: hu55ux/master-frontend:latest # Docker Hub-dakı image adı
     build:
       context: ./Masterrio # Build olunacaq qovluq
       dockerfile: Dockerfile # İstifadə olunacaq Dockerfile
