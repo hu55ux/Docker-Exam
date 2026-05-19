@@ -67,22 +67,23 @@ jobs: # İşlərin (jobs) siyahısı
           username: ${{ secrets.AWS_EC2_USERNAME }}
           key: ${{ secrets.AWS_EC2_SSH_KEY }}
           port: 22
+          request_pty: true # İnteraktiv terminal açır ki, PATH düzgün yüklənsin
           script: |
             # Layihə qovluğuna keçirik (yoxdursa clone edirik)
             if [ ! -d "Docker-Exam" ]; then
-              sudo git clone https://github.com/hu55ux/Docker-Exam.git
+              git clone https://github.com/hu55ux/Docker-Exam.git
             fi
             cd Docker-Exam
 
             # Ən son kodu çəkirik
-            sudo git pull origin main
+            git pull origin main
 
             # Yeni Docker imiclərini çəkirik
-            sudo docker-compose pull
+            docker-compose pull
 
             # Konteynerləri yenidən başladırıq
-            sudo docker-compose down
-            sudo docker-compose up -d
+            docker-compose down
+            docker-compose up -d
 
             # Köhnə imicləri təmizləyirik
-            sudo docker image prune -f
+            docker image prune -f
