@@ -55,3 +55,36 @@ jobs: # İşlərin (jobs) siyahısı
           context: ./Masterrio # Frontend kodunun olduğu qovluq
           push: true # Docker Hub-a göndərilsin (push)
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/master-frontend:latest # Imic üçün tag (etiket)
+
+  # Mərhələ 3: AWS EC2-yə avtomatik qoşulma və deployment
+  aws_vm_deploy:
+    needs: build-and-push # Yalnız imiclər push olunduqdan sonra işləsin
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to AWS EC2 via SSH
+        uses: appleboy/ssh-action@v1.0.3 # SSH vasitəsilə komanda icra edən action
+        with:
+          host: ${{ secrets.AWS_EC2_HOST }} # Serverin IP ünvanı
+          username: ${{ secrets.AWS_EC2_USERNAME }} # Serverin istifadəçi adı (məs: ec2-user)
+          key: ${{ secrets.AWS_EC2_SSH_KEY }} # .pem faylının məzmunu (Private Key)
+          port: 22 # SSH portu
+          script: |
+            # Layihə qovluğuna keçirik (yoxdursa clone edirik)
+            if [ ! -d "Docker-Exam" ]; then
+              git clone https://github.com/hu55ux/Docker-Exam.git
+            fi
+            cd Docker-Exam
+            
+            # Ən son kod dəyişikliklərini çəkirik
+            git pull origin main
+            
+            # Yeni Docker imiclərini çəkirik
+            docker-compose pull
+            
+            # Konteynerləri yenidən başladırıq
+            docker-compose down
+            docker-compose up -d
+            
+            # Köhnə və lazımsız imicləri təmizləyirik
+            docker image prune -f
