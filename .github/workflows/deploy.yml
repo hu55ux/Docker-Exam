@@ -1,3 +1,4 @@
+# CI/CD Pipeline - Automatic AWS Deployment Enabled
 name: CI/CD Pipeline # Pipeline-ın adı
 
 on: # Pipeline-ın hansı hadisələrdə işə düşəcəyi
